@@ -145,32 +145,41 @@ public class MainActivity extends AppCompatActivity implements DataLoader.DataLo
     public void onDataLoaded(InputStream inputStream) {
         System.out.println("MainActivity: onDataLoaded callback received");
 
-        try {
-            XmlParser parser = new XmlParser();
-            List<Currency> currencies = parser.parseXmlData(inputStream);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    System.out.println("MainActivity: Starting XML parsing in background thread");
+                    XmlParser parser = new XmlParser();
+                    List<Currency> currencies = parser.parseXmlData(inputStream);
 
-            runOnUiThread(() -> {
-                allCurrencies.clear();
-                allCurrencies.addAll(currencies);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            allCurrencies.clear();
+                            allCurrencies.addAll(currencies);
 
-                String currentFilter = etFilter.getText().toString();
-                filterCurrencies(currentFilter);
+                            String currentFilter = etFilter.getText().toString();
+                            filterCurrencies(currentFilter);
 
-                System.out.println("MainActivity: UI updated with " + currencies.size() + " currencies");
+                            System.out.println("MainActivity: UI updated with " + currencies.size() + " currencies");
 
-                if (currencies.isEmpty()) {
-                    Toast.makeText(MainActivity.this, "No currency data loaded", Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(MainActivity.this, "Loaded " + currencies.size() + " currencies", Toast.LENGTH_SHORT).show();
+                            if (currencies.isEmpty()) {
+                                Toast.makeText(MainActivity.this, "No currency data loaded", Toast.LENGTH_LONG).show();
+                            } else {
+                                Toast.makeText(MainActivity.this, "Loaded " + currencies.size() + " currencies", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+
+                } catch (Exception e) {
+                    System.out.println("MainActivity: Error in background parsing - " + e.getMessage());
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this, "Error processing data: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    });
                 }
-            });
-
-        } catch (Exception e) {
-            System.out.println("MainActivity: Error in onDataLoaded - " + e.getMessage());
-            runOnUiThread(() -> {
-                Toast.makeText(MainActivity.this, "Error processing data", Toast.LENGTH_LONG).show();
-            });
-        }
+            }
+        }).start();
     }
 
     @Override

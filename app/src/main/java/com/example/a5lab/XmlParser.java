@@ -14,77 +14,69 @@ public class XmlParser {
         List<Currency> currencies = new ArrayList<>();
 
         try {
-            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
-            factory.setNamespaceAware(true);
-            XmlPullParser parser = factory.newPullParser();
-            parser.setInput(inputStream, "UTF-8");
+            XmlPullParser parser = XmlPullParserFactory.newInstance().newPullParser();
+            parser.setInput(inputStream, null);
 
             int eventType = parser.getEventType();
-            String currentCode = "";
-            String currentName = "";
-            double currentRate = 0.0;
-            boolean inItem = false;
+            String currentCode = null;
+            String currentName = null;
+            String currentRate = null;
 
             while (eventType != XmlPullParser.END_DOCUMENT) {
-                String tagName = parser.getName();
+                if (eventType == XmlPullParser.START_TAG) {
+                    String tagName = parser.getName();
 
-                switch (eventType) {
-                    case XmlPullParser.START_TAG:
-                        if ("item".equals(tagName)) {
-                            inItem = true;
-                            currentCode = "";
-                            currentName = "";
-                            currentRate = 0.0;
-                            System.out.println("XmlParser: Found new item");
+                    if ("targetCurrency".equals(tagName)) {
+                        eventType = parser.next();
+                        if (eventType == XmlPullParser.TEXT) {
+                            currentCode = parser.getText().trim();
+                            System.out.println("XmlParser: Code: " + currentCode);
                         }
-                        break;
-
-                    case XmlPullParser.TEXT:
-                        if (inItem) {
-                            String text = parser.getText().trim();
-                            if (!text.isEmpty()) {
-                                switch (tagName) {
-                                    case "targetCurrency":
-                                        currentCode = text;
-                                        System.out.println("XmlParser: Found currency code: " + text);
-                                        break;
-                                    case "targetName":
-                                        currentName = text;
-                                        System.out.println("XmlParser: Found currency name: " + text);
-                                        break;
-                                    case "exchangeRate":
-                                        try {
-                                            currentRate = Double.parseDouble(text);
-                                            System.out.println("XmlParser: Found exchange rate: " + text);
-                                        } catch (NumberFormatException e) {
-                                            System.out.println("XmlParser: Error parsing rate: " + text);
-                                        }
-                                        break;
-                                }
-                            }
+                    }
+                    else if ("targetName".equals(tagName)) {
+                        eventType = parser.next();
+                        if (eventType == XmlPullParser.TEXT) {
+                            currentName = parser.getText().trim();
+                            System.out.println("XmlParser: Name: " + currentName);
                         }
-                        break;
-
-                    case XmlPullParser.END_TAG:
-                        if ("item".equals(tagName) && inItem) {
-                            if (!currentCode.isEmpty() && currentRate > 0) {
-                                Currency currency = new Currency(currentCode, currentName, currentRate);
+                    }
+                    else if ("exchangeRate".equals(tagName)) {
+                        eventType = parser.next();
+                        if (eventType == XmlPullParser.TEXT) {
+                            currentRate = parser.getText().trim();
+                            System.out.println("XmlParser: Rate: " + currentRate);
+                        }
+                    }
+                    else if ("item".equals(tagName)) {
+                        currentCode = null;
+                        currentName = null;
+                        currentRate = null;
+                    }
+                }
+                else if (eventType == XmlPullParser.END_TAG) {
+                    String tagName = parser.getName();
+                    if ("item".equals(tagName)) {
+                        if (currentCode != null && currentRate != null) {
+                            try {
+                                double rateValue = Double.parseDouble(currentRate);
+                                Currency currency = new Currency(currentCode, currentName != null ? currentName : "", rateValue);
                                 currencies.add(currency);
-                                System.out.println("XmlParser: Added currency to list: " + currentCode);
+                                System.out.println("XmlParser: ADDED: " + currentCode + " = " + rateValue);
+                            } catch (NumberFormatException e) {
+                                System.out.println("XmlParser: Invalid rate: " + currentRate);
                             }
-                            inItem = false;
                         }
-                        break;
+                    }
                 }
 
                 eventType = parser.next();
             }
 
-            System.out.println("XmlParser: Parsing completed. Total currencies: " + currencies.size());
+            System.out.println("XmlParser: Successfully parsed " + currencies.size() + " currencies");
             return currencies;
 
         } catch (Exception e) {
-            System.out.println("XmlParser: Error parsing XML - " + e.getMessage());
+            System.out.println("XmlParser: Error - " + e.getMessage());
             e.printStackTrace();
             return new ArrayList<>();
         }
