@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">5 lab</string>
+    <string name="et_hint">Enter currency code (e.g. EUR, GBP)</string>
+    <string name="tv_loading">Loading currencies...</string>
 </resources>
